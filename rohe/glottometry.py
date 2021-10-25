@@ -30,7 +30,12 @@ n, that would set the “penalty” for overlapping subgroups:
 
 """
 from itertools import chain
-from pandas import read_csv, DataFrame
+from pathlib import Path
+from random import randint
+
+from pandas import read_excel, read_csv, DataFrame
+from matplotlib import pyplot as plt
+from geometry import midpoint, points_circumference, buffer_convex_hull, build_isogloss
 
 
 def contains(s1, s2):
@@ -79,6 +84,15 @@ def flatten(seq):
     return chain.from_iterable(seq)
 
 
+def neighbours(point, step=1):
+    result = []
+    for x in [-step, 0, step]:
+        for y in [-step, 0, step]:
+            result.append((point[0] + x, point[1] + y))
+    result.remove(point)
+    return result    
+
+
 ## Public
 def analyse(path):
     """Entry point to this module. Perform a historical glottometry analysis on the
@@ -90,14 +104,14 @@ def analyse(path):
 
 class FeatureMatrix:
 
-    def __init__(self, path):
-        frame = read_csv(path, sep="\t")
-
+    def __init__(self, path_or_frame, ignore_cols=[]):
+        frame = self.load_data(path_or_frame)
+        innv_header = frame.columns[0]
         lang_feats = {l : list() for l in frame.columns[1:]}
-        feat_langs = {i : list() for i in frame["Innovation"]}
+        feat_langs = {i : list() for i in frame[innv_header]}
     
         for row in frame.itertuples():
-            innv = getattr(row, "Innovation")
+            innv = getattr(row, innv_header)
             for lang in lang_feats.keys():
                 if getattr(row, lang) == 1:
                     lang_feats[lang].append(innv)
@@ -108,6 +122,25 @@ class FeatureMatrix:
         self.feat_matrix = frame
 
 
+    def load_data(self, path_or_frame, ignore_cols=[]):
+        argtype = type(path_or_frame)
+        if argtype not in [DataFrame, str]:
+            raise TypeError("Incorrect arg type, must be frame or path str")
+        if argtype == str:
+            path = Path(path_or_frame)
+            if path.suffix == ".tsv":
+                frame = read_csv(path, sep="\t")
+            elif path.suffix == ".csv":
+                frame = read_csv(path, sep=",")
+            elif path.suffix == ".xlsx":
+                frame = read_excel(path)
+            else:
+                raise ValueError("Supported file types are TSV, CSV, XLSX")
+        else:
+            frame = path_or_frame
+        return frame.drop(ignore_cols, axis=1)
+
+    
     @property
     def languages(self):
         return set(self.lang_feats.keys())
@@ -150,7 +183,7 @@ class FeatureMatrix:
     def cohesiveness(self, languages):
         n_supporting = len(self.supporting(languages))
         n_conflicting = len(self.conflicting(languages))
-        return n_supporting / (n_supporting + n_conflicting)
+    return n_supporting / (n_supporting + n_conflicting)
 
 
     def subgroupiness(self, languages):
@@ -186,3 +219,58 @@ class FeatureMatrix:
             })
         return DataFrame(rows)
 
+
+    def draw(self):
+        fig, axis = plt.subplots(1, 1)
+        analysis = self.analyse()
+        n_groups = len(analysis.group)
+        positions = {}
+
+        # Place languages according to group membership
+        for group_str in analysis.group:
+            group = group_str.split(", ")
+            allocated = [positions[lang] for lang in group if lang in positions]
+            for lang in group:
+                if not positions:
+                    positions[lang] = (0, 0)
+                    continue
+                if lang not in positions:
+                    if allocated:
+                        avail = [xy for xy in neighbours(allocated[0]) if xy not in positions.values()]
+                        positions[lang] = avail[0]
+                    else:
+                        positions[lang] = (randint(0, n_groups), randint(0, n_groups))
+
+        # Label languages
+        for group, position in positions.items():
+            x, y = position
+            axis.scatter(x, y)
+            axis.annotate(group, (x, y))
+
+        # Draw isoglosses
+        for group_str in analysis.group:
+            group = group_str.split(", ")
+            print([positions[lang] for lang in group])
+            isogloss = build_isogloss(
+                [positions[lang] for lang in group],
+                padding = 0.1
+            )
+            for point in isogloss:
+                axis.plot(point[0], point[1], "k-")
+                
+        plt.show()
+                    
+        
+
+
+def draw_diagram(group_table):
+    fig, axis = plt.subplots(1, 1)
+    # Dummy subgroup positions
+    n_groups = len(group_table.group)
+    x = [randint(0, n_groups) for i in range(n_groups)]
+    y = [randint(0, n_groups) for i in range(n_groups)]
+    axis.scatter(x, y)
+    # Label subgroups
+    for i, group in enumerate(group_table.group):
+        axis.annotate(group, (x[i], y[i]))
+    plt.show()
