@@ -1,3 +1,5 @@
+from random import random
+
 from scipy.spatial import ConvexHull
 from numpy import cos, sin, pi
 
@@ -35,13 +37,13 @@ def midpoint(point_a, point_b, offset=(0, 0)):
 
 def points_circumference(point, radius, n=10):
     """Generate `n` points on `radius` of `point`"""
-    return [
-        (
-            point[0] + cos(2 * pi / n * x) * radius,
-            point[1] + sin(2 * pi / n * x) * radius,
-        )
-        for x in range(n + 1)
-    ]
+    result = []
+    for i in range(n):
+        angle = random() * pi * 2
+        x = point[0] + cos(angle) * radius
+        y = point[1] + sin(angle) * radius
+        result.append((x, y))
+    return result
 
 
 def buffer_convex_hull(hull: ConvexHull, stretch: float, n: int) -> ConvexHull:
@@ -60,7 +62,7 @@ def buffer_convex_hull(hull: ConvexHull, stretch: float, n: int) -> ConvexHull:
     return ConvexHull(new_points)
 
 
-def build_isogloss(points, padding=.1, roundedness=40, scale=.001):
+def build_isogloss(points, padding=.1, roundedness=100, scale=.001):
     if not points:
         raise ValueError("Input point sequence empty")
 
