@@ -52,6 +52,8 @@ def buffer_convex_hull(hull: ConvexHull, stretch: float, n: int) -> ConvexHull:
     `n` : how many vertices on the new hull to generate. This controls the
     amount of roundedness at the corners of the polygon.
     """
+    # TODO: This could be made more efficient by only generating rounding points
+    # outside the boundaries of the input hull. But doesn't really matter
     new_points = []
     for point in zip(
             hull.points[hull.vertices, 0],
@@ -80,8 +82,8 @@ def build_isogloss(points, padding=.1, roundedness=100, scale=.001):
     
     # After computing the complex hull, we expand it and round the edges
     buff_hull = buffer_convex_hull(hull, padding, roundedness)
-    isogloss = []
 
+    isogloss = []
     for simplex in buff_hull.simplices:
         point = (buff_hull.points[simplex, 0], buff_hull.points[simplex, 1])
         isogloss.append(point)

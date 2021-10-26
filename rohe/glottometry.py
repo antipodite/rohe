@@ -183,7 +183,7 @@ class FeatureMatrix:
     def cohesiveness(self, languages):
         n_supporting = len(self.supporting(languages))
         n_conflicting = len(self.conflicting(languages))
-    return n_supporting / (n_supporting + n_conflicting)
+        return n_supporting / (n_supporting + n_conflicting)
 
 
     def subgroupiness(self, languages):
@@ -250,27 +250,12 @@ class FeatureMatrix:
         # Draw isoglosses
         for group_str in analysis.group:
             group = group_str.split(", ")
-            print([positions[lang] for lang in group])
             isogloss = build_isogloss(
                 [positions[lang] for lang in group],
-                padding = 0.1
+                padding = 0.1,
             )
             for point in isogloss:
                 axis.plot(point[0], point[1], "k-")
                 
         plt.show()
-                    
-        
 
-
-def draw_diagram(group_table):
-    fig, axis = plt.subplots(1, 1)
-    # Dummy subgroup positions
-    n_groups = len(group_table.group)
-    x = [randint(0, n_groups) for i in range(n_groups)]
-    y = [randint(0, n_groups) for i in range(n_groups)]
-    axis.scatter(x, y)
-    # Label subgroups
-    for i, group in enumerate(group_table.group):
-        axis.annotate(group, (x[i], y[i]))
-    plt.show()
